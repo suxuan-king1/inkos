@@ -174,6 +174,7 @@ function extractBalancedJsonObject(text: string, start: number): string | null {
   let depth = 0;
   let inString = false;
   let escaped = false;
+  let endIndex = -1;
 
   for (let index = start; index < text.length; index += 1) {
     const char = text[index]!;
@@ -206,7 +207,8 @@ function extractBalancedJsonObject(text: string, start: number): string | null {
     if (char === "}") {
       depth -= 1;
       if (depth === 0) {
-        return text.slice(start, index + 1);
+        endIndex = index;
+        break;
       }
       if (depth < 0) {
         return null;
@@ -214,5 +216,24 @@ function extractBalancedJsonObject(text: string, start: number): string | null {
     }
   }
 
-  return null;
+  if (endIndex < 0) return null;
+
+  // Only accept the candidate if what follows the closing brace is
+  // nothing, whitespace, or a structural JSON terminator.
+  // This rejects trailing content like "{...} more text here"
+  const followingChar = text[endIndex + 1];
+  if (
+    followingChar !== undefined &&
+    followingChar !== "\n" &&
+    followingChar !== "\r" &&
+    followingChar !== "\t" &&
+    followingChar !== " " &&
+    followingChar !== "," &&
+    followingChar !== "]" &&
+    followingChar !== "}"
+  ) {
+    return null;
+  }
+
+  return text.slice(start, endIndex + 1);
 }
